@@ -1,0 +1,289 @@
+<!-- image crop CDN -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.11/cropper.min.js"></script>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.11/cropper.min.css" rel="stylesheet">
+
+<style>
+    #imgCropWindow {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background-color: #ffffff;
+        width: 80vw;
+        height: 80vh;
+        border: 1px solid #ccc;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        z-index: 9999;
+    }
+
+    /* @media only screen and (max-width: 767px) {
+        #imgCropWindow {
+            width: 90vw;
+            height: 60vh;
+        }
+    } */
+
+    #imgCropWindow.show {
+        display: block;
+    }
+
+    #imgCropWindow.hide {
+        display: none;
+    }
+
+    #imgCropWindow .winHeader {
+        background: linear-gradient(180deg, #4B91F7 0%, #367AF6 100%);
+        border: 1px solid #ccc;
+        color: #fff;
+        text-align: center;
+        font-size: 14px;
+    }
+
+    #imgCropWindow .winBody {
+        border: 1px solid black;
+        overflow-y: scroll;
+        /* Enable vertical scroll */
+        max-height: calc(80vh - 80px);
+        /* Adjusted height for header and footer */
+    }
+
+    #imgCropWindow .winFooter {
+        position: absolute;
+        bottom: 0px;
+        right: 0px;
+        width: 100%;
+        box-sizing: border-box;
+        padding: 4px;
+        display: flex;
+        flex-direction: row-reverse;
+        background: linear-gradient(180deg, #4B91F7 0%, #367AF6 100%);
+    }
+
+    /* CSS */
+    #imgCropWindow .winButton {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        margin: 0px 4px;
+        padding: 6px 14px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Roboto', sans-serif;
+        border-radius: 6px;
+        border: 1px solid #fff;
+        cursor: pointer;
+        color: #fff;
+        background: linear-gradient(180deg, #4B91F7 0%, #367AF6 100%);
+        background-origin: border-box;
+        box-shadow: 0px 0.5px 1.5px rgba(54, 122, 246, 0.25), inset 0px 0.8px 0px -0.25px rgba(255, 255, 255, 0.2);
+        user-select: none;
+        -webkit-user-select: none;
+        touch-action: manipulation;
+    }
+
+    #imgCropWindow .winButton:focus {
+        box-shadow: inset 0px 0.8px 0px -0.25px rgba(255, 255, 255, 0.2), 0px 0.5px 1.5px rgba(54, 122, 246, 0.25), 0px 0px 0px 3.5px rgba(58, 108, 217, 0.5);
+        outline: 0;
+    }
+
+    .winBody img {
+        max-width: 100%;
+        /* Make the image responsive */
+        height: auto;
+        /* Maintain aspect ratio */
+        display: block;
+        /* Remove extra space below image */
+        margin: auto;
+        /* Center the image */
+    }
+</style>
+
+<!-- Modal -->
+<div id="imgCropWindow" class="hide">
+    <div class="winHeader">
+        <h4>Crop Image</h4>
+    </div>
+    <div class="winBody">
+        <div id="imgPreview"></div>
+    </div>
+    <div class="winFooter">
+        <button type="button" class="winButton winCloseBtn" role="button">Close</button>
+        <button type="button" class="winButton winCropBtn" role="button">Crop</button>
+    </div>
+</div>
+
+<script>
+    // console.log(imgInputElements);
+    var commpressInputImages = [];
+    var cropper; // Declare cropper variable in the outer scope
+    var inputFile;
+    var inputName;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        var imgInputElements = document.querySelectorAll('.cropImg');
+        var cropButton = document.querySelector(".winCropBtn");
+        var closeButton = document.querySelector(".winCloseBtn");
+        var imgCropWindow = document.getElementById("imgCropWindow");
+        // crop image file
+        imgInputElements.forEach(function(input) {
+            input.addEventListener('change', function() {
+                inputName = this.name;
+                inputFile = this.files[0];
+                if (inputFile.type == 'image/jpeg' || inputFile.type == 'image/jpg' || inputFile.type == 'image/png') {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        document.getElementById('imgPreview').innerHTML = '<img src="' + e.target.result + '" alt="Preview">';
+
+                        // open the preview window
+                        winModalOpenFunc();
+
+                        // create crop in image
+                        var image = document.querySelector('#imgPreview img');
+                        cropper = new Cropper(image, {
+                            // aspectRatio: 1, // Set aspect ratio as needed
+                            crop: function(e) {
+                                // Output the cropped image data
+                                // console.log('Cropped data:', cropper.getData());
+                            }
+                        });
+                    };
+                    reader.readAsDataURL(inputFile);
+                } else if (inputFile.type == 'application/pdf') {
+                    return;
+                } else {
+                    alert('Please select a valid image file, Only jpg, jpeg and png Images or pdf allowed');
+                }
+            });
+        });
+
+        // JavaScript to toggle the visibility of the popup window
+        cropButton.addEventListener("click", function() {
+            winModalOpenFunc();
+
+            if (cropper) {
+                // Get the cropped image data
+                var croppedCanvas = cropper.getCroppedCanvas();
+
+                // Convert the canvas to Blob
+                croppedCanvas.toBlob(function(blob) {
+
+                    // call function to compress the image
+                    compressImage(blob, 1200, 900, 0.9, function(compressedBlob) { // Adjust quality here
+
+                        // // Display the compressed image
+                        // var output = document.getElementById('output');
+                        // output.innerHTML = ''; // Clear previous output
+                        // var imgElement = new Image();
+                        // imgElement.src = URL.createObjectURL(compressedBlob);
+                        // output.appendChild(imgElement);
+
+                        // Create unique filename
+                        const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9);
+                        var imgName = "img-" + uniqueName + "." + compressedBlob.type.split("/")[1];
+
+                        // // Create a File object from the compressedBlob
+                        var compressedFile = new File([compressedBlob], imgName, {
+                            type: compressedBlob.type
+                        });
+                        commpressInputImages.push([inputName, compressedFile]);
+                        document.querySelector('#imgPreview').innerHTML = "";
+                        // console.log(compressedFile);
+                    });
+                }, inputFile.type);
+            }
+        });
+
+        // JavaScript to toggle the visibility of the popup window
+        closeButton.addEventListener("click", function() {
+            winModalOpenFunc();
+
+            // call function to compress the image
+            compressImage(inputFile, 1200, 900, 0.9, function(compressedBlob) { // Adjust quality here
+
+                // // Display the compressed image
+                // var output = document.getElementById('output');
+                // output.innerHTML = ''; // Clear previous output
+                // var imgElement = new Image();
+                // imgElement.src = URL.createObjectURL(compressedBlob);
+                // output.appendChild(imgElement);
+
+                // Create unique filename
+                const uniqueName = Date.now() + "-" + Math.round(Math.random() * 1e9);
+                var imgName = "img-" + uniqueName + "." + compressedBlob.type.split("/")[1];
+
+                // // Create a File object from the compressedBlob
+                var compressedFile = new File([compressedBlob], imgName, {
+                    type: compressedBlob.type
+                });
+                commpressInputImages.push([inputName, compressedFile]);
+                document.querySelector('#imgPreview').innerHTML = "";
+                // console.log(compressedFile);
+            });
+        });
+    });
+
+    // commpress image file
+    function compressImage(file, maxWidth, maxHeight, quality, callback) {
+        var reader = new FileReader();
+        reader.onload = function(event) {
+            var image = new Image();
+            image.src = event.target.result;
+            image.onload = function() {
+                var canvas = document.createElement('canvas');
+                var width = image.width;
+                var height = image.height;
+
+                // Calculate new dimensions to maintain aspect ratio
+                if (width > height) {
+                    if (width > maxWidth) {
+                        height *= maxWidth / width;
+                        width = maxWidth;
+                    }
+                } else {
+                    if (height > maxHeight) {
+                        width *= maxHeight / height;
+                        height = maxHeight;
+                    }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+
+                var ctx = canvas.getContext('2d');
+                ctx.drawImage(image, 0, 0, width, height);
+
+                // Compress the image
+                canvas.toBlob(function(blob) {
+                    callback(blob);
+                }, 'image/jpeg', quality); // Adjust quality as needed
+            };
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Custom function to open modal dialog
+    function winModalOpenFunc() {
+        var modal = document.getElementById('imgCropWindow');
+
+        // Calculate the top and left positions
+        var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        var scrollLeft = window.pageXOffset || document.documentElement.scrollLeft;
+        var windowWidth = window.innerWidth || document.documentElement.clientWidth;
+        var windowHeight = window.innerHeight || document.documentElement.clientHeight;
+        var modalWidth = modal.offsetWidth;
+        var modalHeight = modal.offsetHeight;
+
+        var top = (windowHeight - modalHeight) / 2 + scrollTop;
+        var left = (windowWidth - modalWidth) / 2 + scrollLeft;
+
+        // Set the top and left positions
+        modal.style.top = top + 'px';
+        modal.style.left = left + 'px';
+
+        if (modal.classList.contains("show")) {
+            modal.classList.remove("show");
+            modal.classList.add("hide");
+        } else {
+            modal.classList.remove("hide");
+            modal.classList.add("show");
+        }
+    }
+</script>
